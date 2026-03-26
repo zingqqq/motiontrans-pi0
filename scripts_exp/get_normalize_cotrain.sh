@@ -1,21 +1,23 @@
 # bash scripts_exp/get_normalize_cotrain.sh
 
 repo_id="0703_pi_cotrain"
-dataset_path="zarr_data/zarr_data_human|zarr_data/zarr_data_robot"  # link different folders with |
+dataset_path="/data/zeqingwang/vis_test/zarr_data/zarr_data_human|/data/zeqingwang/vis_test/empty"  # link different folders with |
 
 checkpoint_base_dir="checkpoints_pi0/pretrained_ckpts"
 assets_base_dir="checkpoints_pi0/assets"
 export HF_HOME="/cephfs/shared/yuanchengbo/hub/huggingface"
 export OPENPI_DATA_HOME="checkpoints_pi0/openpi"
-export LEROBOT_HOME="checkpoints_pi0/lerobot"                                             
-export CUDA_VISIBLE_DEVICES=0
+export HF_LEROBOT_HOME="checkpoints_pi0/lerobot"                                             
+export CUDA_VISIBLE_DEVICES=3
+export PKG_CONFIG_PATH="$CONDA_PREFIX/lib/pkgconfig"  
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH" 
 exp_name="default"               # not used
 
 # we downsample data-obs and action from 20 Hz to 10 Hz, since pi0 inference only support for 10Hz inference speed. 
 
 uv run scripts/compute_norm_stats.py pi0_droid_motiontrans \
 --exp_name=${exp_name} \
---single_arm \
+--no-single-arm \
 --checkpoint_base_dir=${checkpoint_base_dir} \
 --assets_base_dir=${assets_base_dir} \
 --repo_id=${repo_id} \

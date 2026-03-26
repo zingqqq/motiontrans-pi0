@@ -464,7 +464,7 @@ class TrainConfig:
     # device memory will be reduced but training could potentially be slower.
     # eg. if total device is 4 and fsdp devices is 2; then the model will shard to 2 devices and run
     # data parallel between 2 groups of devices.
-    fsdp_devices: int = 1
+    fsdp_devices: int = 2
 
     policy_dir: str = None
 
@@ -530,9 +530,9 @@ class MotionTransTrainConfig(TrainConfig):
 
     def __post_init__(self):
         super().__post_init__()
-        object.__setattr__(self, 'data', LeRobotMotionTransADataConfig(
+        object.__setattr__(self, 'data', LeRobotMotionTransDataConfig(
             repo_id=self.repo_id,
-            base_config=MotionTransDataConfig(
+            base_config=MotionTransADataConfig(
                 local_files_only=True,  # Set to True for local-only datasets.
                 prompt_from_task=True,
                 alpha=self.alpha,

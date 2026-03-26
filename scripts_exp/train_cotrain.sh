@@ -2,13 +2,18 @@
 
 exp_name="default"                           # the description of the experiment target
 repo_id="0703_pi_cotrain"                    # the repo used for dataset and norm-stat
-dataset_path="zarr_data/zarr_data_human|zarr_data/zarr_data_robot"  # link different folders with |
+dataset_path="/data/zeqingwang/vis_test/zarr_data/zarr_data_human|/data/zeqingwang/vis_test/empty"  # link different folders with |
 
 checkpoint_base_dir="checkpoints_pi0/pretrained_ckpts"
 assets_base_dir="checkpoints_pi0/assets"
 export HF_HOME="/cephfs/shared/yuanchengbo/hub/huggingface"
 export OPENPI_DATA_HOME="checkpoints_pi0/openpi"
-export LEROBOT_HOME="checkpoints_pi0/lerobot"                                             
+export HF_LEROBOT_HOME="checkpoints_pi0/lerobot"   
+export PKG_CONFIG_PATH="$CONDA_PREFIX/lib/pkgconfig"
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+export CUDA_VISIBLE_DEVICES=2,7
+export XLA_FLAGS=--xla_force_host_platform_device_count=2
+
 
 logging_time=$(date "+%d-%H.%M.%S")
 now_seconds="${logging_time: -8}"
@@ -16,19 +21,19 @@ now_date=$(date "+%Y.%m.%d")
 
 alpha=0.5
 proprioception_droprate=0.0
-num_devices=8
-single_batch_size=24
+num_devices=2
+single_batch_size=1
 batch_size=$((num_devices * single_batch_size))
 echo batch_size $batch_size
 
 num_train_steps=150001
-keep_period=75000
+keep_period=7500
 log_interval=250
-save_interval=75000
-val_interval=5000
+save_interval=7500
+val_interval=500
 max_token_len=150
 
-single_val_batch_size=24
+single_val_batch_size=1
 val_batch_size=$((num_devices * single_val_batch_size))
 echo val_batch_size $val_batch_size
 
@@ -39,7 +44,7 @@ echo val_batch_size $val_batch_size
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.95 uv run scripts/train.py pi0_droid_motiontrans \
 --exp-name="${now_date}_${now_seconds}_${repo_id}_${exp_name}" \
 --alpha=${alpha} \
---single_arm \
+--no-single_arm \
 --checkpoint_base_dir=${checkpoint_base_dir} \
 --assets_base_dir=${assets_base_dir} \
 --batch-size=$batch_size \

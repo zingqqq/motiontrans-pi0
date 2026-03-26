@@ -6,6 +6,9 @@ from typing import Any
 import requests
 import socket
 import time
+import pdb
+import cv2
+import os
 
 import etils.epath as epath
 import flax.nnx as nnx
@@ -347,6 +350,27 @@ def main(config: _config.TrainConfig):
     batch = next(data_iter)
     logging.info(f"Initialized data loader:\n{training_utils.array_tree_to_info(batch)}")
 
+#####Zeqing#########
+    # observation, _ = batch
+
+    # images = observation.images['0_rgb']   # shape: (1, 224, 224, 3)
+
+    # images_np = jax.device_get(images)
+
+    # print("Image shape:", images_np.shape)
+
+    # img = images_np[0]  
+    # print("Image range:", images_np.min(), images_np.max())
+
+    # # float -> uint8
+    # if img.dtype != np.uint8:
+    #     img = ((img+1)/2.0 * 255.0).clip(0, 255).astype(np.uint8)
+
+    # cv2.imwrite("debug.png", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+    # print("Saved debug.png")
+
+    #pdb.set_trace()
+###############################
     if config.use_val_dataset:
         val_data_iter = iter(val_data_loader)
         val_batch = next(val_data_iter)

@@ -127,13 +127,23 @@ class Normalize(DataTransformFn):
     def __call__(self, data: DataDict) -> DataDict:
         if self.norm_stats is None:
             return data
-
-        return apply_tree(
+        if "image" in data:
+            for k, v in data["image"].items():
+                arr = np.asarray(v)
+                print(f"[Before Normalize {k}] Image range:",
+                    arr.min(), arr.max())
+        data = apply_tree(
             data,
             self.norm_stats,
             self._normalize_quantile if self.use_quantiles else self._normalize,
             strict=self.strict,
         )
+        if "image" in data:
+            for k, v in data["image"].items():
+                arr = np.asarray(v)
+                print(f"[After Normalize {k}] Image range:",
+                    arr.min(), arr.max())
+        return data
 
     def _normalize(self, x, stats: NormStats):
         return (x - stats.mean) / (stats.std + 1e-6)
@@ -181,7 +191,17 @@ class ResizeImages(DataTransformFn):
     width: int
 
     def __call__(self, data: DataDict) -> DataDict:
+        if "image" in data:
+            for k, v in data["image"].items():
+                arr = np.asarray(v)
+                print(f"[Before Resize {k}] Image range:",
+                      arr.min(), arr.max())
         data["image"] = {k: image_tools.resize_with_pad(v, self.height, self.width) for k, v in data["image"].items()}
+        if "image" in data:
+            for k, v in data["image"].items():
+                arr = np.asarray(v)
+                print(f"[After Resize {k}] Image range:",
+                      arr.min(), arr.max())
         return data
 
 

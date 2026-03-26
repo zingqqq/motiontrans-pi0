@@ -262,7 +262,7 @@ class ZarrDataset(Dataset):
     def _get_single_arm_data(self, data, robot_idx, state_target_idx, action_idx_slice, cam_proj, interpolation_start, interpolation_end):
 
         if f'robot{robot_idx}_eef_pos' not in data.keys():
-            return None, None, None, None
+            return None, None, None, None, None
 
         rot_preprocess = st.Rotation.from_rotvec
         rot_postprocess = st.Rotation.as_rotvec
@@ -297,7 +297,30 @@ class ZarrDataset(Dataset):
             axis=0, assume_sorted=True)
         gripper_obs_pose = interp(state_target_idx)[1:]
 
-        action_pose = data['action'][action_idx_slice, 12*robot_idx:12*robot_idx+6]
+        # =======================  Panda 6+1 =======================
+
+        total_action_dim = data['action'].shape[-1]
+
+        # 计算每臂维度
+        if self.single_arm:
+            per_arm_dim = total_action_dim
+        else:
+            per_arm_dim = total_action_dim // 2
+
+        eef_dim = 6
+        gripper_dim = per_arm_dim - eef_dim
+
+        start = robot_idx * per_arm_dim
+        end = start + per_arm_dim
+
+        if end > total_action_dim:
+            return None, None, None, None, None
+
+        action_slice = data['action'][action_idx_slice, start:end]
+
+        action_pose = action_slice[:, :eef_dim]
+        gripper_action_pose = action_slice[:, eef_dim:]
+
         cam_action_pose_mat = pose_to_mat(action_pose)
         cam_action_pose_mat = cam_proj @ cam_action_pose_mat 
 
@@ -306,11 +329,10 @@ class ZarrDataset(Dataset):
             base_pose_mat=relative_pose_base,
             pose_rep=self.action_rep,
             backward=False)
-        
-        cam_action_pose = mat_to_pose10d(cam_action_pose_mat)
-        gripper_action_pose = data['action'][action_idx_slice, 12*robot_idx+6:12*robot_idx+12]
 
-        return cam_obs_pose, gripper_obs_pose, cam_action_pose, gripper_action_pose
+        cam_action_pose = mat_to_pose10d(cam_action_pose_mat)
+
+        return cam_obs_pose, gripper_obs_pose, cam_action_pose, gripper_action_pose , relative_pose_base
 
 
     def __getitem__(self, idx: SupportsIndex) -> Dict:
@@ -322,22 +344,31 @@ class ZarrDataset(Dataset):
         episode_idx = self.episodes_idxs[idx]  # inside_buffer episode_idx
         embodiment = self.embodiments[idx]
         idx = self.data_idxs[idx]              # inside_buffer data_idx
+        print("action shape: ", data['action'].shape)
         if 'camera0_pose' in data.keys():
             a = np.array(pose_to_mat(data['camera0_pose'][idx]))
             b = np.array(pose_to_mat(data['camera0_pose'][start_idx]))
             cam_proj = np.linalg.inv(a) @ b
         else:
             cam_proj = np.eye(4)
-
+        intrinsic = data['camera0_left_intrinsic_final'][idx]
         # ============================== add image data ==============================
         rgbs = {}
         image_target_idx = np.array([idx] + [idx - self.image_down_sample_steps[history_idx] for history_idx in range(self.image_hisory_length - 1)])
         image_target_idx = np.clip(image_target_idx[::-1], start_idx, end_idx - 1)
         for i in range(self.image_hisory_length):
+            ####Zeqing#############
+            raw_img = data['camera0_rgb'][int(image_target_idx[i])]
+            # print("raw image range:",raw_img.min(),raw_img.max())
 
             img = torch.from_numpy(data['camera0_rgb'][int(image_target_idx[i])].astype(np.float32)) / 255.0 * 2.0 - 1.0
+            # print("Before parse:", img.min(), img.max())
             rgbs['image_{}'.format(i + 1)] = img
-
+            # import cv2
+            # img_vis = ((img.numpy()+1.0) / 2.0 * 255).clip(0,255).astype(np.uint8)
+            # print("vis image range:",img_vis.min(),img_vis.max())
+            # cv2.imwrite("debug_dataset_norm.png", cv2.cvtColor(img_vis, cv2.COLOR_RGB2BGR))
+            #################################
         # print(type(rgbs['image_{}'.format(i + 1)]))
         # print(rgbs['image_{}'.format(i + 1)].dtype)
         # print(rgbs['image_{}'.format(i + 1)].max())
@@ -351,11 +382,11 @@ class ZarrDataset(Dataset):
         slice_end = min(end_idx, idx + (self.action_horizon - 1) * self.action_down_sample_steps + 1)
         action_idx_slice = slice(idx, slice_end, self.action_down_sample_steps)          #(idx: slice_end: self.action_down_sample_steps)
 
-        obs_pose_right, gripper_pose_right, action_pose_right, action_gripper_right = self._get_single_arm_data(
+        obs_pose_right, gripper_pose_right, action_pose_right, action_gripper_right,base_pose_right = self._get_single_arm_data(
             data, 0, state_target_idx, action_idx_slice, cam_proj, interpolation_start, interpolation_end)
 
         if self.single_arm is False:
-            obs_pose_left, gripper_pose_left, action_pose_left, action_gripper_left = self._get_single_arm_data(
+            obs_pose_left, gripper_pose_left, action_pose_left, action_gripper_left,base_pose_left = self._get_single_arm_data(
                 data, 1, state_target_idx, action_idx_slice, cam_proj, interpolation_start, interpolation_end)
 
             if obs_pose_right is None and obs_pose_left is None:
@@ -380,14 +411,25 @@ class ZarrDataset(Dataset):
                 action_pose_left[:action_real_horizon], action_gripper_left[:action_real_horizon],
             ], axis=-1)
         else:
+            base_pose_left = np.eye(4)
             action_real_horizon = action_pose_right.shape[0]
             actions = np.concatenate([
                 action_pose_right[:action_real_horizon], action_gripper_right[:action_real_horizon], 
             ], axis=-1)
 
-        padding = np.repeat(actions[-1:], self.action_horizon - action_real_horizon, axis=0)
-        actions = np.concatenate([actions, padding], axis=0)
-        action_is_pad = torch.tensor([False] * actions.shape[0] + [True] * (self.action_horizon - actions.shape[0]))
+        real_len = action_real_horizon
+        pad_len = self.action_horizon - real_len
+
+        if pad_len > 0:
+            padding = np.repeat(actions[-1:], pad_len, axis=0)
+            actions = np.concatenate([actions[:real_len], padding], axis=0)
+        else:
+            actions = actions[:real_len]
+
+        action_is_pad = torch.tensor(
+            [False] * real_len +
+            [True] * pad_len
+        )
         
         if self.single_arm is False:
             states = np.concatenate([
@@ -427,5 +469,80 @@ class ZarrDataset(Dataset):
             'prompt': prompt,
             'alpha': alpha,
         }
-        
-        return sample
+        # ========================== Zeqing ==========================
+        # global _DEBUG_PLOT_COUNT
+        # if '_DEBUG_PLOT_COUNT' not in globals():
+        #     _DEBUG_PLOT_COUNT = 0
+
+        # if _DEBUG_PLOT_COUNT < 200:
+        #     _DEBUG_PLOT_COUNT += 1
+        #     import cv2
+        #     import os
+        #     import time
+        #     from openpi.policies.pose_repr_util import convert_pose_mat_rep
+        #     from openpi.policies.pose_util import pose10d_to_mat, project_point
+            
+        #     vis_img = cv2.cvtColor(raw_img, cv2.COLOR_RGB2BGR) if raw_img.shape[-1] == 3 else raw_img.copy()
+        #     h_img, w_img = vis_img.shape[:2]
+
+        #     large_vis_img = np.zeros((h_img, w_img + 100, 3), dtype=np.uint8)
+        #     large_vis_img[:, :w_img] = vis_img
+
+        #     for step in range(actions.shape[0]):
+        #         if action_is_pad[step]: 
+        #             continue
+
+        #         step_action = actions[step]
+        #         intensity = int(255 - (step / 16.0) * 150)
+                
+        #         if self.single_arm:
+        #             per_arm_dim = actions.shape[-1]
+        #         else:
+        #             per_arm_dim = actions.shape[-1] // 2
+
+        #         pose_dim = 9  
+        #         gripper_dim = per_arm_dim - pose_dim
+
+        #         action_right_10d = step_action[0:pose_dim]
+        #         rel_action_mat_right = pose10d_to_mat(action_right_10d)
+        #         abs_action_mat_right = convert_pose_mat_rep(
+        #             rel_action_mat_right,
+        #             base_pose_mat=base_pose_right,
+        #             pose_rep=self.action_rep,
+        #             backward=True 
+        #         )
+
+        #         abs_pos_3d = abs_action_mat_right[:3, 3]
+        #         pt_right = project_point(intrinsic, abs_pos_3d)
+        #         u, v = int(pt_right[0]), int(pt_right[1])
+
+        #         if 0 <= u < w_img + 100 and 0 <= v < h_img:
+        #             cv2.circle(large_vis_img, (u, v), 4, (0, 0, 255), -1)
+
+        #         if not self.single_arm:
+        #             left_start = per_arm_dim
+        #             action_left_10d = step_action[left_start:left_start+pose_dim]
+
+        #             rel_action_mat_left = pose10d_to_mat(action_left_10d)
+        #             abs_action_mat_left = convert_pose_mat_rep(
+        #                 rel_action_mat_left,
+        #                 base_pose_mat=base_pose_left,
+        #                 pose_rep=self.action_rep,
+        #                 backward=True 
+        #             )
+
+        #             pt_left = project_point(intrinsic, abs_action_mat_left[:3, 3])
+        #             ul, vl = int(pt_left[0]), int(pt_left[1])
+
+        #             if 0 <= ul < w_img + 100 and 0 <= vl < h_img:
+        #                 cv2.circle(large_vis_img, (ul, vl), 4, (255, 0, 0), -1)
+
+        #     timestamp = time.strftime("%Y%m%d_%H%M%S")
+        #     millisec = int(time.time() * 1000) % 1000 
+        #     save_name = f"debug_embodiment_{embodiment}_ep{episode_idx}_{timestamp}_{millisec:03d}.jpg"
+        #     save_path = os.path.join(os.getcwd(), save_name)
+            
+        #     cv2.imwrite(save_path, large_vis_img)
+        #     print(f"[Debug] Saved img {save_name} (u={u}, v={v})")
+        # ============================================================================================
+        return sample 
