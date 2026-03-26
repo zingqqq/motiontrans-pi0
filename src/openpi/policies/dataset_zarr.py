@@ -301,7 +301,6 @@ class ZarrDataset(Dataset):
 
         total_action_dim = data['action'].shape[-1]
 
-        # 计算每臂维度
         if self.single_arm:
             per_arm_dim = total_action_dim
         else:
@@ -344,7 +343,7 @@ class ZarrDataset(Dataset):
         episode_idx = self.episodes_idxs[idx]  # inside_buffer episode_idx
         embodiment = self.embodiments[idx]
         idx = self.data_idxs[idx]              # inside_buffer data_idx
-        print("action shape: ", data['action'].shape)
+        # print("action shape: ", data['action'].shape)
         if 'camera0_pose' in data.keys():
             a = np.array(pose_to_mat(data['camera0_pose'][idx]))
             b = np.array(pose_to_mat(data['camera0_pose'][start_idx]))

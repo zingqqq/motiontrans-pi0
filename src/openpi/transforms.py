@@ -194,14 +194,14 @@ class ResizeImages(DataTransformFn):
         if "image" in data:
             for k, v in data["image"].items():
                 arr = np.asarray(v)
-                print(f"[Before Resize {k}] Image range:",
-                      arr.min(), arr.max())
+                # print(f"[Before Resize {k}] Image range:",
+                #       arr.min(), arr.max())
         data["image"] = {k: image_tools.resize_with_pad(v, self.height, self.width) for k, v in data["image"].items()}
         if "image" in data:
             for k, v in data["image"].items():
                 arr = np.asarray(v)
-                print(f"[After Resize {k}] Image range:",
-                      arr.min(), arr.max())
+                # print(f"[After Resize {k}] Image range:",
+                #       arr.min(), arr.max())
         return data
 
 
