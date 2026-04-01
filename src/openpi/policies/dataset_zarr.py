@@ -113,6 +113,49 @@ def get_instruction_from_filename_list(filename_list):
     return instruction_list
 
 
+import yaml
+
+
+def get_instruction_from_yaml(filename_list: List[str], yaml_path: str) -> List[str]:
+    lang_dict = load_language_dict(yaml_path)
+    
+    
+    final_instruction_list = []
+    
+    for filename in filename_list:
+        if '+' in filename and filename.find('+') > 0:
+            task_name = filename[filename.find('+') + 1 : filename.rfind('+')]
+            task_name = task_name.strip()
+        else:
+            raise ValueError(f'Filename {filename} does not contain instruction format.')
+
+        if task_name in lang_dict:
+            chosen_instruction = random.choice(lang_dict[task_name])
+        else:
+            chosen_instruction = task_name.replace('_', ' ')
+        
+        chosen_instruction = chosen_instruction.strip()
+        if not chosen_instruction.endswith('.'):
+            chosen_instruction += '.'
+            
+        final_instruction_list.append(chosen_instruction)
+        print(final_instruction_list[-1])
+    return final_instruction_list
+
+def load_language_dict(yaml_path: str) -> Dict[str, List[str]]:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    lang_dict: Dict[str, List[str]] = {}
+    for task_name, entry in data.get("language_dict", {}).items():
+        pool: List[str] = []
+        pool.extend(entry.get("original") or [])
+        pool.extend(entry.get("randomized") or [])
+        if pool:
+            lang_dict[task_name] = pool
+    return lang_dict
+
+
 T_co = TypeVar("T_co", covariant=True)
 
 class Dataset(Protocol[T_co]):
@@ -130,7 +173,10 @@ class ZarrDataset(Dataset):
 
         replay_buffer_list, dataset_path_list = get_replay_buffer_list(dataset_path=data_config.dataset_path, cache_dir=None)
         self.dataset_path_list = dataset_path_list
-        self.dataset_name_instructions_list = get_instruction_from_filename_list(dataset_path_list)
+        #self.dataset_name_instructions_list = get_instruction_from_filename_list(dataset_path_list)
+        self.yaml_path = '/data/zeqingwang/language_annotations.yaml' ### Please change the path to your yaml file if needed.
+        self.lang_dict = load_language_dict(self.yaml_path)
+        #self.dataset_name_instructions_list = get_instruction_from_yaml(dataset_path_list, '/data/zeqingwang/language_annotations.yaml')  ### Please change the path to your yaml file if needed.
         self.single_arm = data_config.single_arm
 
         self.data_config = data_config
@@ -445,8 +491,21 @@ class ZarrDataset(Dataset):
         if 'instruction' in data.keys():
             prompt = str(data['instruction'][idx])
         else:
-            prompt = self.dataset_name_instructions_list[zarr_idx]
+            filename = self.dataset_path_list[zarr_idx]
+            
+            if '+' in filename and filename.find('+') > 0:
+                task_name = filename[filename.find('+') + 1 : filename.rfind('+')]
+                task_name = task_name.strip()
+            else:
+                task_name = "unknown_task" 
+
+            if task_name in self.lang_dict:
+                prompt = random.choice(self.lang_dict[task_name])
+            else:
+                prompt = task_name.replace('_', ' ')
+
         prompt = prompt.strip()
+        #print('prompt: ', prompt)
         if not prompt.endswith('.'):
             prompt += '.'
 
