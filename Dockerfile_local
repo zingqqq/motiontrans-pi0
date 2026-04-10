@@ -1,0 +1,21 @@
+FROM 124224456861.dkr.ecr.us-west-2.amazonaws.com/openpi_server:latest
+
+# SageMaker local mode calls 'train' as the container entrypoint.
+# This script reads hyperparameters from the SageMaker JSON config and
+# passes them as CLI args to the training script.
+RUN printf '%s\n' \
+    '#!/bin/bash' \
+    'set -e' \
+    'PROGRAM="${SAGEMAKER_PROGRAM:-scripts/train.py}"' \
+    'HYPERPARAMS_FILE="/opt/ml/input/config/hyperparameters.json"' \
+    'ARGS=""' \
+    'if [ -f "$HYPERPARAMS_FILE" ]; then' \
+    '    ARGS=$(python3 -c "' \
+    'import json' \
+    'with open(\"$HYPERPARAMS_FILE\") as f: hp = json.load(f)' \
+    'print(\" \".join(f\"--{k} {v}\" for k, v in hp.items() if v is not None))' \
+    '")' \
+    'fi' \
+    'cd /opt/ml/code' \
+    'exec python $PROGRAM $ARGS' \
+    > /usr/local/bin/train && chmod +x /usr/local/bin/train

@@ -127,22 +127,22 @@ class Normalize(DataTransformFn):
     def __call__(self, data: DataDict) -> DataDict:
         if self.norm_stats is None:
             return data
-        if "image" in data:
-            for k, v in data["image"].items():
-                arr = np.asarray(v)
-                print(f"[Before Normalize {k}] Image range:",
-                    arr.min(), arr.max())
+        # if "image" in data:
+        #     for k, v in data["image"].items():
+        #         arr = np.asarray(v)
+        #         print(f"[Before Normalize {k}] Image range:",
+        #             arr.min(), arr.max())
         data = apply_tree(
             data,
             self.norm_stats,
             self._normalize_quantile if self.use_quantiles else self._normalize,
             strict=self.strict,
         )
-        if "image" in data:
-            for k, v in data["image"].items():
-                arr = np.asarray(v)
-                print(f"[After Normalize {k}] Image range:",
-                    arr.min(), arr.max())
+        # if "image" in data:
+            # for k, v in data["image"].items():
+            #     arr = np.asarray(v)
+                # print(f"[After Normalize {k}] Image range:",
+                #     arr.min(), arr.max())
         return data
 
     def _normalize(self, x, stats: NormStats):

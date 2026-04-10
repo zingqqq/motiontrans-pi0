@@ -27,6 +27,8 @@ import openpi.training.optimizer as _optimizer
 import openpi.training.weight_loaders as weight_loaders
 import openpi.transforms as _transforms
 
+from rich import print 
+
 ModelType: TypeAlias = _model.ModelType
 # Work around a tyro issue with using nnx.filterlib.Filter directly.
 Filter: TypeAlias = nnx.filterlib.Filter
@@ -455,7 +457,9 @@ class TrainConfig:
     policy_metadata: dict[str, Any] | None = None
 
     # If true, will use the validation dataset for training.
-    use_val_dataset: bool = False
+    # use_val_dataset: bool = False
+    use_val_dataset: int = 0
+    task_name: str = None 
     val_ratio: float = 0.01
     # If true, will create a train/val split from the dataset. It's used only when compute norm stats.
     create_train_val_split: bool = False
@@ -494,12 +498,15 @@ class TrainConfig:
 class MotionTransADataConfig(DataConfig):
     dataset_class: type = MotionTransDataset
     dataset_path: str = ""
-    single_arm: bool = False
+    # single_arm: bool = False
+    single_arm: int = 0
     alpha: float = 0.5
     state_down_sample_steps: list[int] = dataclasses.field(default_factory=list)
     image_down_sample_steps: list[int] = dataclasses.field(default_factory=list)
     action_down_sample_steps: int = 1
-    use_val_dataset: bool = False
+    # use_val_dataset: bool = False
+    use_val_dataset: int = 0
+    task_name: str = None 
     val_ratio: float = 0.01
     create_train_val_split: bool = False
     norm_stats_dir: str | None = None
@@ -514,7 +521,9 @@ class MotionTransADataConfig(DataConfig):
 class MotionTransTrainConfig(TrainConfig):
     repo_id: str = tyro.MISSING
     dataset_path: str = ""
-    single_arm: bool = False
+    # single_arm: bool = False
+    single_arm: int = 0
+    task_name: str = None 
     alpha: float = 0.5
     state_down_sample_steps: list[int] = tyro.MISSING
     image_down_sample_steps: list[int] = dataclasses.field(default_factory=list)
@@ -555,6 +564,8 @@ class MotionTransTrainConfig(TrainConfig):
             assert isinstance(self.lr_schedule, _optimizer.CosineDecaySchedule), "Only CosineDecaySchedule is supported for lr_decay_till_end"
             object.__setattr__(self, 'lr_schedule', dataclasses.replace(self.lr_schedule, decay_steps=self.num_train_steps))
 
+
+        print(f"[yellow]self.compute_norm_stats: {self.compute_norm_stats}")
 
 # Use `get_config` if you need to get a config by name in your code.
 _CONFIGS = [
