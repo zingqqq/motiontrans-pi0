@@ -50,7 +50,7 @@ class Args:
     default_prompt: str | None = None
 
     # Port to serve the policy on.
-    port: int = 8000
+    port: int = 45783
     # Record the policy's behavior for debugging.
     record: bool = False
 
@@ -86,7 +86,7 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     ),
     EnvMode.MOTIONTRANS: Checkpoint(
         config="pi0_droid_motiontrans",
-        dir="Put YOUR_CKPT_PATH Here"
+        dir="/data/kylehatch/checkpoints_pi0/pretrained_ckpts/PutKiwiInCenterOfTable/pi0_droid_motiontrans/2026.04.17_01.04.44_0703_pi_cotrain_PutKiwiInCenterOfTable-b24v4-fsdp2-nocorrupted-noidle/7500"
     )
 }
 

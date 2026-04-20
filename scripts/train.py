@@ -300,6 +300,10 @@ def compute_mse(
             "state": state_i,
             "actions": target_i
         })['actions']
+        # Print first sample only
+        if i <= 10:
+            print(f"[Val] predicted action:\n{transformed_action_i}")
+            print(f"[Val] target    action:\n{transformed_target_i}")
         errors.append(transformed_target_i - transformed_action_i)
     
     errors = np.asanyarray(errors)
@@ -425,6 +429,10 @@ def main(config: _config.TrainConfig):
             for val_batch in tqdm.tqdm(val_data_loader, dynamic_ncols=True, desc='Validation', leave=False):
                 with sharding.set_mesh(mesh):
                     val_outputs = pval_inference(val_rng, train_state, val_batch)
+                val_outputs_np = jax.device_get(val_outputs)
+                print("actions shape:", val_outputs_np["actions"].shape)
+                print("targets shape:", val_outputs_np["targets"].shape)
+                print("state shape:", val_outputs_np["state"].shape)
                 val_info = compute_mse(state=val_outputs['state'],
                                        actions=val_outputs['actions'],
                                        targets=val_outputs['targets'],

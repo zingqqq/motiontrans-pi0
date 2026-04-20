@@ -404,19 +404,22 @@ class ZarrDataset(Dataset):
         for i in range(self.image_hisory_length):
             ####Zeqing#############
             raw_img = data['camera0_rgb'][int(image_target_idx[i])]
-            # print("raw image range:",raw_img.min(),raw_img.max())
-
             img = torch.from_numpy(data['camera0_rgb'][int(image_target_idx[i])].astype(np.float32)) / 255.0 * 2.0 - 1.0
-            # print("Before parse:", img.min(), img.max())
             rgbs['image_{}'.format(i + 1)] = img
-            # import cv2
-            # img_vis = ((img.numpy()+1.0) / 2.0 * 255).clip(0,255).astype(np.uint8)
-            # print("vis image range:",img_vis.min(),img_vis.max())
-            # cv2.imwrite("debug_dataset_norm.png", cv2.cvtColor(img_vis, cv2.COLOR_RGB2BGR))
             #################################
-        # print(type(rgbs['image_{}'.format(i + 1)]))
-        # print(rgbs['image_{}'.format(i + 1)].dtype)
-        # print(rgbs['image_{}'.format(i + 1)].max())
+
+        # Wrist cameras (camera1_rgb, camera2_rgb, …) at the current timestep.
+        # These are appended after the scene-camera history frames so the model
+        # sees them as additional image tokens.
+        wrist_image_offset = self.image_hisory_length + 1
+        wrist_cam_idx = 1
+        while f'camera{wrist_cam_idx}_rgb' in data.keys():
+            wrist_img = torch.from_numpy(
+                data[f'camera{wrist_cam_idx}_rgb'][int(idx)].astype(np.float32)
+            ) / 255.0 * 2.0 - 1.0
+            rgbs[f'image_{wrist_image_offset}'] = wrist_img
+            wrist_image_offset += 1
+            wrist_cam_idx += 1
 
         # ============================== add proprioception ==============================
         state_target_idx = np.array([idx] + [idx - self.state_down_sample_steps[history_idx] for history_idx in range(self.state_hisory_length - 1)])

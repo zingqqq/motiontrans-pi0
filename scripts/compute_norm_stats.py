@@ -41,6 +41,9 @@ def create_dataset(config: _config.TrainConfig, sample_ratio: float=1.0) -> tupl
 def main(config: _config.TrainConfig, max_frames: int | None = None):
 
     data_config, dataset = create_dataset(config, sample_ratio=0.05)
+    # print("===== DataConfig =====")
+    # print(data_config)
+
 
     num_frames = len(dataset)
     shuffle = False
@@ -64,6 +67,7 @@ def main(config: _config.TrainConfig, max_frames: int | None = None):
         for i in range(len(batch)):
             for key in keys:
                 values = np.asarray(batch[key][i])
+                # print(f"Key: {key}, Shape: {values.shape}, Dtype: {values.dtype}")
                 stats[key].update(values.reshape(-1, values.shape[-1]))
 
     norm_stats = {key: stats.get_statistics() for key, stats in stats.items()}

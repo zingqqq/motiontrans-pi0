@@ -2,7 +2,7 @@
 
 exp_name="default"                           # the description of the experiment target
 repo_id="0703_pi_cotrain"                    # the repo used for dataset and norm-stat
-dataset_path="/data/zeqingwang/vis_test/zarr_data/zarr_data_human|/data/zeqingwang/vis_test/empty"  # link different folders with |
+dataset_path="/data/zeqingwang/vis_test/zarr_data/zarr_data_human_1|/data/zeqingwang/vis_test/zarr_data/zarr_data_robot"  # link different folders with |
 
 checkpoint_base_dir="checkpoints_pi0/pretrained_ckpts"
 assets_base_dir="checkpoints_pi0/assets"
@@ -11,7 +11,7 @@ export OPENPI_DATA_HOME="checkpoints_pi0/openpi"
 export HF_LEROBOT_HOME="checkpoints_pi0/lerobot"   
 export PKG_CONFIG_PATH="$CONDA_PREFIX/lib/pkgconfig"
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
-export CUDA_VISIBLE_DEVICES=2,7
+export CUDA_VISIBLE_DEVICES=2,3
 export XLA_FLAGS=--xla_force_host_platform_device_count=2
 
 

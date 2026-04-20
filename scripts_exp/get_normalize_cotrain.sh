@@ -1,7 +1,7 @@
 # bash scripts_exp/get_normalize_cotrain.sh
 
 repo_id="0703_pi_cotrain"
-dataset_path="/data/zeqingwang/vis_test/zarr_data/zarr_data_human|/data/zeqingwang/vis_test/empty"  # link different folders with |
+dataset_path="/data/zeqingwang/vis_test/zarr_data/zarr_data_human_1|/data/zeqingwang/vis_test/zarr_data/zarr_data_robot"  # link different folders with |
 
 checkpoint_base_dir="checkpoints_pi0/pretrained_ckpts"
 assets_base_dir="checkpoints_pi0/assets"
