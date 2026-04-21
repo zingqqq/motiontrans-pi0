@@ -46,7 +46,7 @@ repo_id="0703_pi_cotrain"                    # the repo used for dataset and nor
 # dataset_path="/opt/ml/input/data/training/zarr_data/zarr_data_robot/robot_mix+$task_name+.zarr"
 # dataset_path="/opt/ml/input/data/robot_mix+$task_name+.zarr"
 # dataset_path="/opt/ml/input/data/zarr_data_robot/robot_mix+$task_name+.zarr"
-dataset_path="/opt/ml/input/data/zarr_data_robot_no_corrupted_episodes_no_idle/robot_mix+$task_name+.zarr"
+dataset_path="/opt/ml/input/data/zarr_data_robot_no_corrupted_episodes_no_idle_wrist/robot_mix+$task_name+.zarr"
 
 checkpoint_base_dir="/checkpoints_pi0/pretrained_ckpts/$task_name/"
 assets_base_dir="/checkpoints_pi0/assets/$task_name/"
