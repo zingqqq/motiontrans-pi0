@@ -7,7 +7,8 @@ task_name=PutKiwiInCenterOfTable
 
 
 repo_id="0703_pi_cotrain"
-dataset_path="/data/zarr_data/zarr_data_robot/robot_mix+$task_name+.zarr"
+# dataset_path="/data/zarr_data/zarr_data_robot/robot_mix+$task_name+.zarr"
+dataset_path="/data/zarr_data/zarr_data_robot_no_corrupted_episodes_no_idle/robot_mix+$task_name+.zarr"
 
 # checkpoint_base_dir="/checkpoints_pi0/pretrained_ckpts"
 # assets_base_dir="/checkpoints_pi0/assets"

@@ -22,6 +22,7 @@ from filelock import FileLock
 from openpi.replay_buffer import ReplayBuffer
 from openpi.imagecodecs_numcodecs import register_codecs
 
+from rich import print 
 
 register_codecs()
 
@@ -165,6 +166,8 @@ class ZarrDataset(Dataset):
         ]
         self.action_horizon = action_horizon
 
+        # print(f"[red] self.data_config.val_ratio:", self.data_config.val_ratio)
+
         if data_config.create_train_val_split:
             assert data_config.use_val_dataset
         if data_config.create_train_val_split and split == 'train':
@@ -245,6 +248,7 @@ class ZarrDataset(Dataset):
 
 
     def set_sample_ratio(self, sample_ratio):
+        # print(f"[red] sample_ratio:", sample_ratio)
         interval_size = int(1.0 / sample_ratio)
         self.indices = self.indices[::interval_size]
 
@@ -305,6 +309,8 @@ class ZarrDataset(Dataset):
             per_arm_dim = total_action_dim
         else:
             per_arm_dim = total_action_dim // 2
+
+        # print(f"[red] (1) self.single_arm: {self.single_arm}, per_arm_dim: {per_arm_dim}, total_action_dim: {total_action_dim}")
 
         eef_dim = 6
         gripper_dim = per_arm_dim - eef_dim
@@ -383,10 +389,12 @@ class ZarrDataset(Dataset):
 
         obs_pose_right, gripper_pose_right, action_pose_right, action_gripper_right,base_pose_right = self._get_single_arm_data(
             data, 0, state_target_idx, action_idx_slice, cam_proj, interpolation_start, interpolation_end)
-
-        if self.single_arm is False:
+        
+        if not self.single_arm:
             obs_pose_left, gripper_pose_left, action_pose_left, action_gripper_left,base_pose_left = self._get_single_arm_data(
                 data, 1, state_target_idx, action_idx_slice, cam_proj, interpolation_start, interpolation_end)
+            
+            # print(f"[red] (2) self.single_arm: {self.single_arm}, not self.single_arm: {not self.single_arm}, obs_pose_left.shape: {obs_pose_left.shape}")
 
             if obs_pose_right is None and obs_pose_left is None:
                 raise ValueError(f"Missing data for episode {episode_idx} at index {idx}. Please check the dataset.")
@@ -430,10 +438,12 @@ class ZarrDataset(Dataset):
             [True] * pad_len
         )
         
-        if self.single_arm is False:
+        
+        if not self.single_arm:
             states = np.concatenate([
                 obs_pose_right.flatten(), gripper_pose_right.flatten(), obs_pose_left.flatten(), gripper_pose_left.flatten(),
             ], axis=-1)
+            # print(f"[red] (3) self.single_arm: {self.single_arm}, not self.single_arm: {not self.single_arm}, states.shape: {states.shape}")
         else:
             states = np.concatenate([
                 obs_pose_right.flatten(), gripper_pose_right.flatten()

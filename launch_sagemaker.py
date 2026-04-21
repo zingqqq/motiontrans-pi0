@@ -488,7 +488,8 @@ def main_after_setup_move(args):
     inputs = None
     if args.local:
         # inputs = {"training": f"file:///home/ubuntu/Desktop/video_benchmarking_project/data"}
-        inputs = {"zarr_data_robot": f"file:///home/ubuntu/Desktop/video_benchmarking_project/data/zarr_data/zarr_data_robot"}
+        # inputs = {"zarr_data_robot": f"file:///home/ubuntu/Desktop/video_benchmarking_project/data/zarr_data/zarr_data_robot"}
+        inputs = {"zarr_data_robot_no_corrupted_episodes_no_idle": f"file:///home/ubuntu/Desktop/video_benchmarking_project/data/zarr_data/zarr_data_robot_no_corrupted_episodes_no_idle"}
         # from sagemaker.inputs import TrainingInput
         # inputs = {f"zarr_data_robot": TrainingInput(s3_data=f"s3://tri-ml-sandbox-16011-us-west-2-datasets/kylehatch/video_benchmarking_project/motiontrans-pi0_data/zarr_data/zarr_data_robot", input_mode="File")}
         
@@ -496,7 +497,8 @@ def main_after_setup_move(args):
     else:
         from sagemaker.inputs import TrainingInput
         # inputs = {f"robot_mix+{args.task_name}+.zarr": TrainingInput(s3_data=f"s3://tri-ml-sandbox-16011-us-west-2-datasets/kylehatch/video_benchmarking_project/motiontrans-pi0_data/zarr_data/zarr_data_robot/robot_mix+{args.task_name}+.zarr", input_mode="File")}
-        inputs = {f"zarr_data_robot": TrainingInput(s3_data=f"s3://tri-ml-sandbox-16011-us-west-2-datasets/kylehatch/video_benchmarking_project/motiontrans-pi0_data/zarr_data/zarr_data_robot", input_mode="File")}
+        # inputs = {f"zarr_data_robot": TrainingInput(s3_data=f"s3://tri-ml-sandbox-16011-us-west-2-datasets/kylehatch/video_benchmarking_project/motiontrans-pi0_data/zarr_data/zarr_data_robot", input_mode="File")}
+        inputs = {f"zarr_data_robot_no_corrupted_episodes_no_idle": TrainingInput(s3_data=f"s3://tri-ml-sandbox-16011-us-west-2-datasets/kylehatch/video_benchmarking_project/motiontrans-pi0_data/zarr_data/zarr_data_robot_no_corrupted_episodes_no_idle", input_mode="File")}
 
 
     if is_sm_queue:

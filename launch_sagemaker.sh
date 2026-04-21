@@ -1,10 +1,13 @@
 # NOTE: these unset are important; if not done AWS_PROFILE set in launcher will be ignored
-# unset AWS_ACCESS_KEY_ID
-# unset AWS_SECRET_ACCESS_KEY
-# unset AWS_SESSION_TOKEN
-# unset AWS_PROFILE
-# unset WANDB_API_KEY
-# unset HF_TOKEN
+unset AWS_ACCESS_KEY_ID
+unset AWS_SECRET_ACCESS_KEY
+unset AWS_SESSION_TOKEN
+unset AWS_PROFILE
+unset WANDB_API_KEY
+unset HF_TOKEN
+
+cd ..
+source startup_stuff.sh
 
 INSTANCE_COUNT=$1
 task_name=$2
@@ -42,7 +45,8 @@ repo_id="0703_pi_cotrain"                    # the repo used for dataset and nor
 # dataset_path="/opt/ml/input/data/training/zarr_data/zarr_data_robot/robot_mix+$task_name+.zarr"
 # dataset_path="/opt/ml/input/data/training/zarr_data/zarr_data_robot/robot_mix+$task_name+.zarr"
 # dataset_path="/opt/ml/input/data/robot_mix+$task_name+.zarr"
-dataset_path="/opt/ml/input/data/zarr_data_robot/robot_mix+$task_name+.zarr"
+# dataset_path="/opt/ml/input/data/zarr_data_robot/robot_mix+$task_name+.zarr"
+dataset_path="/opt/ml/input/data/zarr_data_robot_no_corrupted_episodes_no_idle/robot_mix+$task_name+.zarr"
 
 checkpoint_base_dir="/checkpoints_pi0/pretrained_ckpts/$task_name/"
 assets_base_dir="/checkpoints_pi0/assets/$task_name/"
@@ -67,9 +71,10 @@ num_devices=8
 if [ "$LOCAL" -eq 1 ]; then
     single_batch_size=2
     single_val_batch_size=2
+    export WANDB_MODE=offline
 else
     single_batch_size=24
-    single_val_batch_size=24
+    single_val_batch_size=4
 fi
 
 batch_size=$((num_devices * single_batch_size))
@@ -130,8 +135,7 @@ AWS_DEFAULT_REGION=${REGION}                        \
 
 
 
-# bash launch_sagemaker.sh 1 PutGreenAppleOnSaucer PutGreenAppleOnSaucer-p5-wandbonline-b24-fsdp2-ckptwait ml-p5
-# bash launch_sagemaker.sh 1 PutBananaOnSaucer PutBananaOnSaucer-p5-wandbonline-b24-fsdp2-ckptwait ml-p5
-# bash launch_sagemaker.sh 1 PutKiwiInCenterOfTable PutKiwiInCenterOfTable-p5-wandbonline-b24-fsdp2-ckptwait ml-p5
-# bash launch_sagemaker.sh 1 BimanualPlaceAppleFromBowlOnCuttingBoard BimanualPlaceAppleFromBowlOnCuttingBoard-p5-wandbonline-b24-fsdp2-ckptwait ml-p5
 
+# bash launch_sagemaker.sh 1 BimanualPlaceAppleFromBowlOnCuttingBoard BimanualPlaceAppleFromBowlOnCuttingBoard-b24v4-fsdp2-nocorrupted-noidle ml-p5
+# bash launch_sagemaker.sh 1 PutBananaOnSaucer PutBananaOnSaucer-b24v4-fsdp2-nocorrupted-noidle ml-p5
+# bash launch_sagemaker.sh 1 PutKiwiInCenterOfTable PutKiwiInCenterOfTable-b24v4-fsdp2-nocorrupted-noidle ml-p5

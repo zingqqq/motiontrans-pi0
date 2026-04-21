@@ -320,7 +320,7 @@ def main(config: _config.TrainConfig):
     init_logging()
     logging.info(f"Running on: {platform.node()}")
 
-    # print(f"os.listdir(\"/opt/ml/input/data\")", os.listdir("/opt/ml/input/data"))
+    print(f"os.listdir(\"/opt/ml/input/data\")", os.listdir("/opt/ml/input/data"))
     # print(f"os.listdir(\"/opt/ml/input/data/training\")", os.listdir("/opt/ml/input/data/training"))
     print(f"os.listdir({config.dataset_path}):", os.listdir(config.dataset_path))
     
