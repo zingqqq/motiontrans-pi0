@@ -39,6 +39,12 @@ class MotionTransInputs(transforms.DataTransformFn):
     # Determines which model will be used.
     model_type: _model.ModelType = _model.ModelType.PI0
 
+    # Number of scene-camera history frames (image_1..image_N). Images beyond this are wrist cameras.
+    # Scene cameras are keyed as base_{i}_rgb (receives RandomCrop + ColorJitter augmentation).
+    # Wrist cameras are keyed as wrist_{i}_rgb (receives only ColorJitter, no geometric transforms),
+    # matching the "wrist" key check in model.preprocess_observation.
+    image_history_length: int = 1
+
     def __call__(self, data: dict) -> dict:
         mask_padding = self.model_type == _model.ModelType.PI0  # We don't mask for pi0-FAST.
 
@@ -46,19 +52,35 @@ class MotionTransInputs(transforms.DataTransformFn):
         # For pi0-FAST, we don't pad the state (action_dim = 7, which is < 8, so pad is skipped).
         state = transforms.pad_to_dim(data["state"], self.action_dim)
 
-        history_length = 1
-        while True:
-            if f"image_{history_length + 1}" not in data:
-                break
-            history_length += 1
-        
+        # Count total images available in this sample.
+        total_images = 1
+        while f"image_{total_images + 1}" in data:
+            total_images += 1
+
         # Possibly need to parse images to uint8 (H,W,C) since LeRobot automatically
         # stores as float32 (C,H,W), gets skipped for policy inference
         image_dict, image_mask_dict = {}, {}
-        for i in range(history_length):
-            image = _parse_image(data[f"image_{i + 1}"])
-            image_dict[f"{i}_rgb"] = image
-            image_mask_dict[f"{i}_rgb"] = np.True_
+
+        # Scene camera history: image_1..image_{H} → base_0_rgb..base_{H-1}_rgb
+        # Keys without "wrist" receive RandomCrop + ColorJitter in preprocess_observation.
+        for i in range(self.image_history_length):
+            if f"image_{i + 1}" in data:
+                image = _parse_image(data[f"image_{i + 1}"])
+                image_dict[f"base_{i}_rgb"] = image
+                image_mask_dict[f"base_{i}_rgb"] = np.True_
+
+        # Wrist cameras: image_{H+1}.. → right_wrist_0_rgb, right_wrist_1_rgb, left_wrist_0_rgb, left_wrist_1_rgb
+        # Matches zarr DEFAULT_WRIST_CAMERAS order: right_minus, right_plus, left_minus, left_plus.
+        # Keys containing "wrist" receive only ColorJitter (no geometric transforms) in preprocess_observation.
+        _WRIST_NAMES = ["right_wrist_0_rgb", "right_wrist_1_rgb", "left_wrist_0_rgb", "left_wrist_1_rgb"]
+        wrist_idx = 0
+        for raw_idx in range(self.image_history_length + 1, total_images + 1):
+            if f"image_{raw_idx}" in data:
+                image = _parse_image(data[f"image_{raw_idx}"])
+                key = _WRIST_NAMES[wrist_idx] if wrist_idx < len(_WRIST_NAMES) else f"wrist_{wrist_idx}_rgb"
+                image_dict[key] = image
+                image_mask_dict[key] = np.True_
+                wrist_idx += 1
 
         inputs = {
             "state": state,
@@ -85,5 +107,5 @@ class MotionTransInputs(transforms.DataTransformFn):
 @dataclasses.dataclass(frozen=True)
 class MotionTransOutputs(transforms.DataTransformFn):
     def __call__(self, data: dict) -> dict:
-        data.update({"actions": np.asarray(data["actions"])}) 
+        data.update({"actions": np.asarray(data["actions"])})
         return data

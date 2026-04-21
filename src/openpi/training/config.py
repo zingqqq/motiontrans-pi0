@@ -222,8 +222,18 @@ class LeRobotMotionTransDataConfig(DataConfigFactory):
 
         # Prepare data for policy training
         # Convert images to uint8 numpy arrays, add masks
+        base = self.base_config
+        image_history_length = (
+            len(base.image_down_sample_steps) + 1
+            if base is not None and hasattr(base, "image_down_sample_steps")
+            else 1
+        )
         data_transforms = _transforms.Group(
-            inputs=[motiontrans_policy.MotionTransInputs(action_dim=model_config.action_dim, model_type=model_config.model_type)],
+            inputs=[motiontrans_policy.MotionTransInputs(
+                action_dim=model_config.action_dim,
+                model_type=model_config.model_type,
+                image_history_length=image_history_length,
+            )],
             outputs=[motiontrans_policy.MotionTransOutputs()],
         )
 
