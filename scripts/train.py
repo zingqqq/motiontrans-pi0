@@ -6,7 +6,6 @@ from typing import Any
 import requests
 import socket
 import time
-import pdb
 import cv2
 import os
 
@@ -33,6 +32,8 @@ import openpi.training.sharding as sharding
 import openpi.training.utils as training_utils
 import openpi.training.weight_loaders as _weight_loaders
 import openpi.transforms as _transforms
+
+from rich import print 
 
 
 def init_logging():
@@ -156,8 +157,10 @@ def train_step(
     state: training_utils.TrainState,
     batch: tuple[_model.Observation, _model.Actions],
 ) -> tuple[training_utils.TrainState, dict[str, at.Array]]:
+    # print(f"[yellow] (train_step) A")
     model = nnx.merge(state.model_def, state.params)
     model.train()
+    # print(f"[yellow] (train_step) B")
 
     @at.typecheck
     def loss_fn(
@@ -166,20 +169,22 @@ def train_step(
         chunked_loss = model.compute_loss(rng, observation, actions, train=True)
         return jnp.mean(chunked_loss)
 
+    # print(f"[yellow] (train_step) C")
     train_rng = jax.random.fold_in(rng, state.step)
     observation, actions = batch
-
+    # print(f"[yellow] (train_step) D")
     # Filter out frozen params.
     diff_state = nnx.DiffState(0, config.trainable_filter)
     loss, grads = nnx.value_and_grad(loss_fn, argnums=diff_state)(model, train_rng, observation, actions)
-
+    # print(f"[yellow] (train_step) E")
     params = state.params.filter(config.trainable_filter)
     updates, new_opt_state = state.tx.update(grads, state.opt_state, params)
     new_params = optax.apply_updates(params, updates)
-
+    # print(f"[yellow] (train_step) F")
     # Update the model in place and return the new full state.
     nnx.update(model, new_params)
     new_params = nnx.state(model)
+    # print(f"[yellow] (train_step) G")
 
     new_state = dataclasses.replace(state, step=state.step + 1, params=new_params, opt_state=new_opt_state)
     if state.ema_decay is not None:
@@ -189,7 +194,7 @@ def train_step(
                 lambda old, new: state.ema_decay * old + (1 - state.ema_decay) * new, state.ema_params, new_params
             ),
         )
-
+    # print(f"[yellow] (train_step) H")
     # Filter out params that aren't kernels.
     kernel_params = nnx.state(
         model,
@@ -199,6 +204,7 @@ def train_step(
             lambda _, x: x.value.ndim > 1,
         ),
     )
+    # print(f"[yellow] (train_step) I")
     info = {
         "loss": loss,
         "grad_norm": optax.global_norm(grads),
@@ -318,6 +324,17 @@ def main(config: _config.TrainConfig):
     init_logging()
     logging.info(f"Running on: {platform.node()}")
 
+    print(f"os.listdir(\"/opt/ml/input/data\")", os.listdir("/opt/ml/input/data"))
+    # print(f"os.listdir(\"/opt/ml/input/data/training\")", os.listdir("/opt/ml/input/data/training"))
+    print(f"os.listdir({config.dataset_path}):", os.listdir(config.dataset_path))
+    
+    
+
+    import subprocess
+    subprocess.run(["aws", "s3", "sync", "s3://tri-ml-sandbox-16011-us-west-2-datasets/kylehatch/video_benchmarking_project/checkpoints_pi0/", 
+                    "/checkpoints_pi0", "--exclude", "*", "--include", f"assets/{config.task_name}/*"], check=True)
+    
+
     jax.config.update('jax_threefry_partitionable', False)
 
     if config.batch_size % jax.device_count() != 0:
@@ -343,7 +360,6 @@ def main(config: _config.TrainConfig):
         resume=config.resume,
     )
     init_wandb(config, resuming=resuming, enabled=config.wandb_enabled)
-
     data_loader, val_data_loader = _data_loader.create_data_loader(
         config,
         sharding=data_sharding,
@@ -386,8 +402,11 @@ def main(config: _config.TrainConfig):
     jax.block_until_ready(train_state)
     logging.info(f"Initialized train state:\n{training_utils.array_tree_to_info(train_state.params)}")
 
+    print(f"[yellow] before resuming: {resuming} ")
     if resuming:
         train_state = _checkpoints.restore_state(checkpoint_manager, train_state, data_loader)
+
+    print(f"[yellow] resuming: {resuming} ")
 
     ptrain_step = jax.jit(
         functools.partial(train_step, config),
@@ -395,6 +414,7 @@ def main(config: _config.TrainConfig):
         out_shardings=(train_state_sharding, replicated_sharding),
         donate_argnums=(1,),
     )
+    print(f"[yellow] ptrain_step ")
 
     pval_inference = lambda : None
     if config.use_val_dataset:
@@ -405,28 +425,38 @@ def main(config: _config.TrainConfig):
         )
         output_transform, target_transform = _create_output_transform(config)
 
+    print(f"[yellow] pval_inference ")
+
     start_step = int(train_state.step)
+    print(f"[yellow] start_step: {start_step} ")
     pbar = tqdm.tqdm(
         range(start_step, config.num_train_steps),
         initial=start_step,
         total=config.num_train_steps,
         dynamic_ncols=True,
     )
+    print(f"[yellow] start_step: {start_step}, pbar created ")
     infos = []
     for step in pbar:
+        # print(f"[yellow] ({step}) before mesh")
         with sharding.set_mesh(mesh):
             train_state, info = ptrain_step(train_rng, train_state, batch)
         infos.append(info)
         if step % config.log_interval == 0:
+            # print(f"[yellow] ({step}) A")
             stacked_infos = common_utils.stack_forest(infos)
             reduced_info = jax.device_get(jax.tree.map(jnp.mean, stacked_infos))
             info_str = ", ".join(f"{k}={v:.4f}" for k, v in reduced_info.items())
             pbar.write(f"Train at step {step}: {info_str}")
             wandb.log(reduced_info, step=step)
             infos = []
+            # print(f"[yellow] ({step}) C")
+        # print(f"[yellow] ({step}) D")
         if (step % config.val_interval == 0 or step == start_step) and config.use_val_dataset:
+            # print(f"[yellow] ({step}) E")
             val_infos = []
             for val_batch in tqdm.tqdm(val_data_loader, dynamic_ncols=True, desc='Validation', leave=False):
+                # print(f"[yellow] ({step}) F")
                 with sharding.set_mesh(mesh):
                     val_outputs = pval_inference(val_rng, train_state, val_batch)
                 val_outputs_np = jax.device_get(val_outputs)
@@ -442,17 +472,34 @@ def main(config: _config.TrainConfig):
                 if 'text_loss' in val_outputs:
                     val_info['text_loss'] = val_outputs['text_loss']
                 val_infos.append(val_info)
+                # print(f"[yellow] ({step}) G")
+            # print(f"[yellow] ({step})H")
             stacked_val_infos = common_utils.stack_forest(val_infos)
             reduced_val_info = jax.device_get(jax.tree.map(jnp.nanmean, stacked_val_infos))
             val_info_str = ", ".join(f"{k}={v:.4f}" for k, v in reduced_val_info.items())
             pbar.write(f"Validation at step {step}: {val_info_str}")
             log_val_info = {f'val/{k}': v for k, v in reduced_val_info.items()}
             wandb.log(log_val_info, step=step)
+            # print(f"[yellow] ({step}) I")
 
+        # print(f"[yellow] ({step}) J")
         batch = next(data_iter)
+        # print(f"[yellow] ({step}) K")
+
+        if step % config.log_interval == 0:
+            print(f"[yellow] (step: {step}) batch[0].state.shape: {batch[0].state.shape}")
+            print(f'[yellow] (step: {step}) batch[0].images["0_rgb"].shape: {batch[0].images["0_rgb"].shape}')
+            print(f"[yellow] (step: {step}) batch[1].shape: {batch[1].shape}")
+
+        # batch[0].state.shape (16, 32) / (8, 32)
+        # batch[0].images["0_rgb"].shape (16, 224, 224, 3) / (8, 224, 224, 3)
+        # batch[1].shape (16, 16, 32) / (8, 16, 32)
 
         if (step % config.save_interval == 0 and step > start_step) or step == config.num_train_steps - 1:
-            _checkpoints.save_state(checkpoint_manager, train_state, data_loader, step)
+            print(f"[yellow]Starting to save checkpoint for step {step:,}.")
+            _checkpoints.save_state(checkpoint_manager, train_state, data_loader, step, save_to_s3=True,
+                                    base_s3_uri="s3://tri-ml-sandbox-16011-us-west-2-datasets/kylehatch/video_benchmarking_project")
+            print(f"[yellow]Done saving checkpoint.")
 
     logging.info("Waiting for checkpoint manager to finish")
     checkpoint_manager.wait_until_finished()
@@ -470,7 +517,20 @@ def notify_task_completion(name, password, vmids):
 
 
 if __name__ == "__main__":
-    main(_config.cli())
+    # main(_config.cli())
+    import argparse
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--config", type=str, default=None)
+    # parser.add_argument("--task_name", type=str, default=None)
+    known, remaining = parser.parse_known_args()
+    import tyro
+    if known.config is not None:
+        config = _config.get_config(known.config)
+        train_config = tyro.cli(_config.TrainConfig, default=config, args=remaining)
+    else:
+        train_config = _config.cli()
+    main(train_config)
+    
     time.sleep(30)
     hostname = socket.gethostname()
     if "zhaojunmin" in hostname:

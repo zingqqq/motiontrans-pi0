@@ -1,14 +1,23 @@
 # bash scripts_exp/get_normalize_cotrain.sh
 
-repo_id="0703_pi_cotrain"
-dataset_path="/data/zeqingwang/vis_test/zarr_data/zarr_data_human_1|/data/zeqingwang/vis_test/zarr_data/zarr_data_robot"  # link different folders with |
+# task_name=PutGreenAppleOnSaucer
+# task_name=BimanualPlaceAppleFromBowlOnCuttingBoard
+# task_name=PutBananaOnSaucer
+task_name=PutKiwiInCenterOfTable
 
-checkpoint_base_dir="checkpoints_pi0/pretrained_ckpts"
-assets_base_dir="checkpoints_pi0/assets"
-export HF_HOME="/cephfs/shared/yuanchengbo/hub/huggingface"
-export OPENPI_DATA_HOME="checkpoints_pi0/openpi"
-export HF_LEROBOT_HOME="checkpoints_pi0/lerobot"                                             
-export CUDA_VISIBLE_DEVICES=3
+
+repo_id="0703_pi_cotrain"
+# dataset_path="/data/zarr_data/zarr_data_robot/robot_mix+$task_name+.zarr"
+dataset_path="/data/zarr_data/zarr_data_robot_no_corrupted_episodes_no_idle/robot_mix+$task_name+.zarr"
+
+# checkpoint_base_dir="/checkpoints_pi0/pretrained_ckpts"
+# assets_base_dir="/checkpoints_pi0/assets"
+checkpoint_base_dir="/checkpoints_pi0/pretrained_ckpts/$task_name"
+assets_base_dir="/checkpoints_pi0/assets/$task_name"
+export HF_HOME="/cache/huggingface"
+export OPENPI_DATA_HOME="/checkpoints_pi0/openpi"
+export HF_LEROBOT_HOME="/checkpoints_pi0/lerobot"                                            
+export CUDA_VISIBLE_DEVICES=0
 export PKG_CONFIG_PATH="$CONDA_PREFIX/lib/pkgconfig"  
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH" 
 exp_name="default"               # not used
@@ -17,7 +26,7 @@ exp_name="default"               # not used
 
 uv run scripts/compute_norm_stats.py pi0_droid_motiontrans \
 --exp_name=${exp_name} \
---no-single-arm \
+--single-arm 0 \
 --checkpoint_base_dir=${checkpoint_base_dir} \
 --assets_base_dir=${assets_base_dir} \
 --repo_id=${repo_id} \
@@ -26,7 +35,9 @@ uv run scripts/compute_norm_stats.py pi0_droid_motiontrans \
 --action_down_sample_steps 2 \
 --proprioception_rep "relative" \
 --action_rep "relative" \
---use_val_dataset --create_train_val_split --val_ratio=0.025 \
+--use_val_dataset 1 \
+--create_train_val_split \
+--val_ratio=0.1 \
 --compute_norm_stats \
 --no_wandb_enabled \
 

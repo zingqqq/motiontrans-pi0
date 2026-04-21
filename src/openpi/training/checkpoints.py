@@ -12,6 +12,11 @@ import openpi.shared.normalize as _normalize
 import openpi.training.data_loader as _data_loader
 import openpi.training.utils as training_utils
 
+import os 
+import subprocess
+import threading
+import shutil 
+from glob import glob 
 
 def initialize_checkpoint_dir(
     checkpoint_dir: epath.Path | str, *, keep_period: int | None, overwrite: bool, resume: bool
@@ -63,6 +68,8 @@ def save_state(
     state: training_utils.TrainState,
     data_loader: _data_loader.DataLoader,
     step: int,
+    save_to_s3: bool=False,
+    base_s3_uri: str=None,
 ):
     def save_assets(directory: epath.Path):
         # Save the normalization stats.
@@ -80,6 +87,20 @@ def save_state(
         "params": {"params": params},
     }
     checkpoint_manager.save(step, items)
+    checkpoint_manager.wait_until_finished()
+
+    if save_to_s3:
+        assert base_s3_uri is not None
+        checkpoints_local_dir = str(checkpoint_manager.directory)
+        checkpoints_s3_uri = base_s3_uri.strip("/ \n\t") + "/" + checkpoints_local_dir.strip("/ \n\t")
+
+        subprocess.run(["aws", "s3", "sync", checkpoints_local_dir, checkpoints_s3_uri], check=True)
+        for dir_or_file in glob(os.path.join(checkpoints_local_dir, "*")):
+            if os.path.isdir(dir_or_file):
+                dir_step_name = dir_or_file.strip("/").split("/")[-1]
+                if "orbax" not in dir_step_name:
+                    print(f"Removing {dir_or_file}...")
+                    shutil.rmtree(dir_or_file)
 
 
 def restore_state(
