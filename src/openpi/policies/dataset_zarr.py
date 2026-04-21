@@ -114,6 +114,49 @@ def get_instruction_from_filename_list(filename_list):
     return instruction_list
 
 
+import yaml
+
+
+def get_instruction_from_yaml(filename_list: List[str], yaml_path: str) -> List[str]:
+    lang_dict = load_language_dict(yaml_path)
+    
+    
+    final_instruction_list = []
+    
+    for filename in filename_list:
+        if '+' in filename and filename.find('+') > 0:
+            task_name = filename[filename.find('+') + 1 : filename.rfind('+')]
+            task_name = task_name.strip()
+        else:
+            raise ValueError(f'Filename {filename} does not contain instruction format.')
+
+        if task_name in lang_dict:
+            chosen_instruction = random.choice(lang_dict[task_name])
+        else:
+            chosen_instruction = task_name.replace('_', ' ')
+        
+        chosen_instruction = chosen_instruction.strip()
+        if not chosen_instruction.endswith('.'):
+            chosen_instruction += '.'
+            
+        final_instruction_list.append(chosen_instruction)
+        print(final_instruction_list[-1])
+    return final_instruction_list
+
+def load_language_dict(yaml_path: str) -> Dict[str, List[str]]:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    lang_dict: Dict[str, List[str]] = {}
+    for task_name, entry in data.get("language_dict", {}).items():
+        pool: List[str] = []
+        pool.extend(entry.get("original") or [])
+        pool.extend(entry.get("randomized") or [])
+        if pool:
+            lang_dict[task_name] = pool
+    return lang_dict
+
+
 T_co = TypeVar("T_co", covariant=True)
 
 class Dataset(Protocol[T_co]):
@@ -131,7 +174,10 @@ class ZarrDataset(Dataset):
 
         replay_buffer_list, dataset_path_list = get_replay_buffer_list(dataset_path=data_config.dataset_path, cache_dir=None)
         self.dataset_path_list = dataset_path_list
-        self.dataset_name_instructions_list = get_instruction_from_filename_list(dataset_path_list)
+        #self.dataset_name_instructions_list = get_instruction_from_filename_list(dataset_path_list)
+        self.yaml_path = '/data/zeqingwang/language_annotations.yaml' ### Please change the path to your yaml file if needed.
+        self.lang_dict = load_language_dict(self.yaml_path)
+        #self.dataset_name_instructions_list = get_instruction_from_yaml(dataset_path_list, '/data/zeqingwang/language_annotations.yaml')  ### Please change the path to your yaml file if needed.
         self.single_arm = data_config.single_arm
 
         self.data_config = data_config
@@ -364,19 +410,22 @@ class ZarrDataset(Dataset):
         for i in range(self.image_hisory_length):
             ####Zeqing#############
             raw_img = data['camera0_rgb'][int(image_target_idx[i])]
-            # print("raw image range:",raw_img.min(),raw_img.max())
-
             img = torch.from_numpy(data['camera0_rgb'][int(image_target_idx[i])].astype(np.float32)) / 255.0 * 2.0 - 1.0
-            # print("Before parse:", img.min(), img.max())
             rgbs['image_{}'.format(i + 1)] = img
-            # import cv2
-            # img_vis = ((img.numpy()+1.0) / 2.0 * 255).clip(0,255).astype(np.uint8)
-            # print("vis image range:",img_vis.min(),img_vis.max())
-            # cv2.imwrite("debug_dataset_norm.png", cv2.cvtColor(img_vis, cv2.COLOR_RGB2BGR))
             #################################
-        # print(type(rgbs['image_{}'.format(i + 1)]))
-        # print(rgbs['image_{}'.format(i + 1)].dtype)
-        # print(rgbs['image_{}'.format(i + 1)].max())
+
+        # Wrist cameras (camera1_rgb, camera2_rgb, …) at the current timestep.
+        # These are appended after the scene-camera history frames so the model
+        # sees them as additional image tokens.
+        wrist_image_offset = self.image_hisory_length + 1
+        wrist_cam_idx = 1
+        while f'camera{wrist_cam_idx}_rgb' in data.keys():
+            wrist_img = torch.from_numpy(
+                data[f'camera{wrist_cam_idx}_rgb'][int(idx)].astype(np.float32)
+            ) / 255.0 * 2.0 - 1.0
+            rgbs[f'image_{wrist_image_offset}'] = wrist_img
+            wrist_image_offset += 1
+            wrist_cam_idx += 1
 
         # ============================== add proprioception ==============================
         state_target_idx = np.array([idx] + [idx - self.state_down_sample_steps[history_idx] for history_idx in range(self.state_hisory_length - 1)])
@@ -455,8 +504,21 @@ class ZarrDataset(Dataset):
         if 'instruction' in data.keys():
             prompt = str(data['instruction'][idx])
         else:
-            prompt = self.dataset_name_instructions_list[zarr_idx]
+            filename = self.dataset_path_list[zarr_idx]
+            
+            if '+' in filename and filename.find('+') > 0:
+                task_name = filename[filename.find('+') + 1 : filename.rfind('+')]
+                task_name = task_name.strip()
+            else:
+                task_name = "unknown_task" 
+
+            if task_name in self.lang_dict:
+                prompt = random.choice(self.lang_dict[task_name])
+            else:
+                prompt = task_name.replace('_', ' ')
+
         prompt = prompt.strip()
+        #print('prompt: ', prompt)
         if not prompt.endswith('.'):
             prompt += '.'
 

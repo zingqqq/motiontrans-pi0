@@ -123,6 +123,13 @@ def main(config: _config.TrainConfig):
         transformed_targets = target_transform(obs, targets)
         transformed_target_actions = transformed_targets['actions']
         action_mask = np.ones(actions.shape[0], dtype=np.bool_)
+
+        if num_batches <= 20:
+            np.set_printoptions(precision=4, suppress=True, linewidth=200)
+            print(f"\n[Debug] actions shape: {actions.shape}, targets shape: {transformed_target_actions.shape}")
+            print(f"[Debug] First sample — all timesteps predicted actions:\n{actions[0]}")
+            print(f"[Debug] First sample — all timesteps target actions:\n{transformed_target_actions[0]}")
+
         results = compute_error(actions, transformed_target_actions, action_mask)
         if total_error_dict is None:
             total_error_dict = dict()
