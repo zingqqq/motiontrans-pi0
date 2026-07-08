@@ -488,7 +488,9 @@ def main(config: _config.TrainConfig):
 
         if step % config.log_interval == 0:
             print(f"[yellow] (step: {step}) batch[0].state.shape: {batch[0].state.shape}")
-            print(f'[yellow] (step: {step}) batch[0].images["0_rgb"].shape: {batch[0].images["0_rgb"].shape}')
+            # print(f'[yellow] (step: {step}) batch[0].images["0_rgb"].shape: {batch[0].images["0_rgb"].shape}')
+            # for cam_name in batch[0].image.keys():
+            #     print(f'[yellow] (step: {step}) batch[0].images[{cam_name}].shape: {batch[0].images[cam_name].shape}')
             print(f"[yellow] (step: {step}) batch[1].shape: {batch[1].shape}")
 
         # batch[0].state.shape (16, 32) / (8, 32)

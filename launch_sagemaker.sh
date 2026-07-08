@@ -46,7 +46,13 @@ repo_id="0703_pi_cotrain"                    # the repo used for dataset and nor
 # dataset_path="/opt/ml/input/data/training/zarr_data/zarr_data_robot/robot_mix+$task_name+.zarr"
 # dataset_path="/opt/ml/input/data/robot_mix+$task_name+.zarr"
 # dataset_path="/opt/ml/input/data/zarr_data_robot/robot_mix+$task_name+.zarr"
-dataset_path="/opt/ml/input/data/zarr_data_robot_no_corrupted_episodes_no_idle_wrist/robot_mix+$task_name+.zarr"
+# dataset_path="/opt/ml/input/data/zarr_data_robot_no_corrupted_episodes_no_idle_wrist/robot_mix+$task_name+.zarr"
+
+if [ "$task_name" == "all" ]; then
+    dataset_path="/opt/ml/input/data/zarr_data_robot_no_corrupted_episodes_no_idle_wrist"
+else
+    dataset_path="/opt/ml/input/data/zarr_data_robot_no_corrupted_episodes_no_idle_wrist/robot_mix+$task_name+.zarr"
+fi
 
 checkpoint_base_dir="/checkpoints_pi0/pretrained_ckpts/$task_name/"
 assets_base_dir="/checkpoints_pi0/assets/$task_name/"
@@ -136,6 +142,7 @@ AWS_DEFAULT_REGION=${REGION}                        \
 
 
 
-# bash launch_sagemaker.sh 1 BimanualPlaceAppleFromBowlOnCuttingBoard BimanualPlaceAppleFromBowlOnCuttingBoard-b24v4-fsdp2-nocorrupted-noidle ml-p5
-# bash launch_sagemaker.sh 1 PutBananaOnSaucer PutBananaOnSaucer-b24v4-fsdp2-nocorrupted-noidle ml-p5
-# bash launch_sagemaker.sh 1 PutKiwiInCenterOfTable PutKiwiInCenterOfTable-b24v4-fsdp2-nocorrupted-noidle ml-p5
+# bash launch_sagemaker.sh 1 BimanualPlaceAppleFromBowlOnCuttingBoard BimanualPlaceAppleFromBowlOnCuttingBoard-b24v4-fsdp2-nocorrupted-noidle-wrist cv-p5en
+# bash launch_sagemaker.sh 1 PutBananaOnSaucer PutBananaOnSaucer-b24v4-fsdp2-nocorrupted-noidle-wrist ml-p5
+# bash launch_sagemaker.sh 1 PutKiwiInCenterOfTable PutKiwiInCenterOfTable-b24v4-fsdp2-nocorrupted-noidle-wrist ml-p5
+# bash launch_sagemaker.sh 1 all all-b24v4-fsdp2-nocorrupted-noidle-wrist ml-p5

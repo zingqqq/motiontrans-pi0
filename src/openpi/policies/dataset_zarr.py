@@ -175,7 +175,7 @@ class ZarrDataset(Dataset):
         replay_buffer_list, dataset_path_list = get_replay_buffer_list(dataset_path=data_config.dataset_path, cache_dir=None)
         self.dataset_path_list = dataset_path_list
         #self.dataset_name_instructions_list = get_instruction_from_filename_list(dataset_path_list)
-        self.yaml_path = '/data/zeqingwang/language_annotations.yaml' ### Please change the path to your yaml file if needed.
+        self.yaml_path = 'language_annotations.yaml' ### Please change the path to your yaml file if needed.
         self.lang_dict = load_language_dict(self.yaml_path)
         #self.dataset_name_instructions_list = get_instruction_from_yaml(dataset_path_list, '/data/zeqingwang/language_annotations.yaml')  ### Please change the path to your yaml file if needed.
         self.single_arm = data_config.single_arm
